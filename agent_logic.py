@@ -2,13 +2,13 @@ import os
 import re
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-# Direct sub-module imports (Standard for LangChain 0.1+)
-from langchain.agents.agent import AgentExecutor
-from langchain.agents.react.agent import create_react_agent
+from langchain.agents import AgentExecutor, create_react_agent
 from langchain import hub
-from langchain.agents.tools import Tool
+from langchain.agents import Tool
 from langchain.memory import ConversationBufferMemory
 from utils import send_email
+
+# ... baaki code wahi rahega jo pehle tha ...
 
 # Load environment variables
 load_dotenv()
