@@ -8,66 +8,52 @@ from langchain.agents import Tool
 from langchain.memory import ConversationBufferMemory
 from utils import send_email
 
-# Load environment variables
 load_dotenv()
 
 def setup_agent():
     api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError("Critical Error: GROQ_API_KEY missing in Secrets!")
+    
+    llm = ChatGroq(api_key=api_key, model_name="llama-3.3-70b-versatile", temperature=0)
 
-    # LLM Setup
-    llm = ChatGroq(
-        api_key=api_key, 
-        model_name="llama-3.3-70b-versatile", 
-        temperature=0
-    )
-
-    # Professional Email Tool Wrapper
     def email_tool_wrapper(input_data):
         try:
-            if "," not in input_data:
-                return "Error: Please use the format 'recipient@email.com, brief content'."
+            # Email aur message ko alag karne ka behtar tareeqa
+            if "," in input_data:
+                email_part, content_part = input_data.split(",", 1)
+            else:
+                email_part = input_data
+                content_part = "No content provided"
+
+            # Regex for clean email
+            email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', email_part)
+            if not email_match:
+                return "Error: Invalid email format. Please provide a valid email address."
             
-            parts = input_data.split(",", 1)
-            recipient_email = parts[0].strip()
-            message_context = parts[1].strip()
+            target_email = email_match.group(0)
 
-            # Clean email using Regex
-            email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', recipient_email)
-            final_email = email_match.group(0) if email_match else recipient_email
+            # Drafting email body
+            draft_prompt = f"Write a professional email for: {content_part}. Return only Subject and Body."
+            email_draft = llm.invoke(draft_prompt).content
 
-            # Drafting the professional body
-            prompt = (
-                f"Draft a highly professional corporate email for: {message_context}. "
-                "Include a clear Subject and a formal Body. Be concise."
-            )
-            draft = llm.invoke(prompt).content
-
-            # Sending the email
-            status = send_email(final_email, "Automated Professional Update", draft)
-            return f"Success: {status} to {final_email}"
-        
+            status = send_email(target_email, "Project Update", email_draft)
+            return f"Status: {status} to {target_email}"
         except Exception as e:
             return f"Tool Error: {str(e)}"
 
-    # Tool Definition
     tools = [
         Tool(
-            name="Email_Sender_Tool",
+            name="Email_Sender",
             func=email_tool_wrapper,
-            description="Use this tool ONLY to send emails. Input should be: 'email, brief_task'"
+            description="Use to send emails. Format: 'recipient@gmail.com, message context'"
         )
     ]
 
-    # ReAct Prompt & Memory
     prompt = hub.pull("hwchase17/react-chat")
+    # chat_history key yahan memory_key ke naam se aayegi
     agent_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-    # Creating the Agent
     agent = create_react_agent(llm, tools, prompt)
 
-    # Agent Executor
     return AgentExecutor(
         agent=agent,
         tools=tools,
