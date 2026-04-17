@@ -1,6 +1,6 @@
 streamlit
-langchain>=0.1.0
-langchain-community
+langchain==0.1.20
+langchain-community==0.0.38
 langchain-groq
 langchainhub
 python-dotenv
